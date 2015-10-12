@@ -1,16 +1,40 @@
 import csv
 import sqlite3
 import sys
+import json
+from pprint import pprint
 
 conn = sqlite3.connect("test.db")
 conn.text_factory = str
 cur = conn.cursor()
 cur.execute("DROP TABLE IF EXISTS new;")
-cur.execute("CREATE TABLE new (xcord varchar(10), ycord varchar(10));")
+with open('sample.csv') as f:
+  reader = csv.reader(f)
+  row1 = next(reader)   #gets the first line
+print row1
+print len(row1)
+string = ','.join(row1)
+if string[len(string) - 1] != ',' :
+    string = string + ','
+string = string.replace(',', ' varchar(10),')
+temp = list(string)
+del temp[len(string) - 1]
+string = ''.join(temp)
+print string
+cur.execute("CREATE TABLE new (%s);" % string)
+cur.execute("select * from new;")
+one = ''
+for i in range(0, len(row1)) :
+    one =
 with open('sample.csv', 'r') as csvfile :
     dic = csv.DictReader(csvfile)
-    to_db = [(i['xcord'],i['ycord']) for i in dic]
-cur.executemany("INSERT into new values(?,?);", to_db)
+    print dic
+    to_db = [(i['xcord'],i['ycord'],i['a'],i['b']) for i in dic]
+    print to_db
+no_question_marks = '?,'*len(row1)
+no_question_marks = no_question_marks[0:len(no_question_marks) - 1]
+print no_question_marks
+cur.executemany("INSERT into new values(%s);" % no_question_marks, to_db)
 db_new = [str(map(int, i)) for i in to_db]
 print to_db
 conn.commit()
@@ -21,8 +45,8 @@ sequence = ["\\documentclass{article}\n","\\usepackage[margin=0.5in]{geometry}\n
 script.writelines(sequence)
 
 #******************************************************************************#
-
 def line_plot() :
+
     xmin = 0                                                                    #liable to change
     ymin = 0
     xmax = to_db[len(to_db) - 1][0]
@@ -59,6 +83,7 @@ def line_plot() :
         if new[i] == ' ' :
             new[i] = ''
     coordinates = ''.join(new)
+
     script.seek(0, 2)
 
     coordinates1 = coordinates.replace("(", "")
@@ -89,6 +114,11 @@ def line_plot() :
     mark_style = "square"                                                       #user input
     scale = 2                                                                   #user input
 
+    #with open('data.json') as input_file:
+    #    file_data = json.load(input_file);
+    #*********json file parsing**********#
+    #pprint(file_data)
+
     string = '''\\begin{tikzpicture}
     \\begin{axis}[
         title={Prototype},
@@ -115,8 +145,8 @@ def line_plot() :
     script.write(string)
 
 #******************************************************************************#
-
 def scatter_plot() :
+
     script.seek(0, 2)
 
     no_labels = input("No. of labels : ")
@@ -197,9 +227,46 @@ def scatter_plot() :
     script.write(string)
 
 #******************************************************************************#
+def bar_chart() :
 
-#def bar_chart() :
+    script.seek(0, 2)
 
+    string = ''.join(db_new)
+    new = list(string)
+    for i in range(0, len(new)) :
+        if new[i] == '[' :
+            new[i] = '('
+        if new[i] == ']' :
+            new[i] = ')'
+        if new[i] == ' ' :
+            new[i] = ''
+    coordinates = ''.join(new)
+
+    y_label = "sqlite"
+    space_over_bars = 0.05
+    xcord_legend = 0.5
+    ycord_legend = -0.1
+    anchor_position = "north"
+    interval_between_bars = 0.7
+    legend_1 = "one"
+    legend_2 = "two"
+
+    string = '''
+    \\begin{tikzpicture}
+    \\begin{axis}[
+	x tick label style={/pgf/number format/1000 sep=},
+	ylabel=%s,
+	enlargelimits = %f,
+	legend style={at={(%d,%d)},	anchor=%s, legend columns=-1},
+	ybar interval=%f,
+    ]
+    \\addplot
+	coordinates {%s};
+    \legend{%s,%s}
+    \end{axis}
+    \end{tikzpicture}''' % (y_label, space_over_bars, xcord_legend, ycord_legend, anchor_position, interval_between_bars, coordinates, legend_1, legend_2)
+
+    script.write(string)
 
 #******************************************************************************#
 #call functions here
@@ -208,8 +275,12 @@ def scatter_plot() :
 #script.seek(0, 2)
 #script.write("\n\hskip 5pt\n")
 
-scatter_plot()
-#bar_chart()
+#scatter_plot()
+
+#script.seek(0, 2)
+#script.write("\n\hskip 5pt\n")
+
+bar_chart()
 
 script.seek(0, 2)
 script.write("\n\end{document}\n")
